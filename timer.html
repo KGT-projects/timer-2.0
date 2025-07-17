@@ -1,122 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Remote Timer</title>
-  <style>
-    html, body {
-      margin: 0; padding: 0; height: 100%;
-      background: white;
-      color: black;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 6rem;
-      font-family: sans-serif;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    #timer {
-      cursor: default;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phone Timer</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; background: white; color: black;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 6vw; font-family: Arial, sans-serif;
+    user-select: none;
+  }
+  #timer {
+    text-align: center;
+  }
+</style>
 </head>
 <body>
-  <div id="timer">Loading...</div>
+<div id="timer">Loading...</div>
 
-  <script>
-    const GITHUB_TOKEN = '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'; // <-- Replace with your GitHub token
-    const REPO = 'KGT-projects/timer-2.0'; // <-- Your repo here (user/repo)
-    const FILE_PATH = 'time.json';
+<script>
+const REPO = 'KGT-projects/timer-2.0';
+const FILE_PATH = 'time.json';
+const GITHUB_TOKEN = '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'; // Replace with your token
+const TIMER_ELEMENT = document.getElementById('timer');
+const INITIAL_TIME = 115200; // 32 hours in seconds
 
-    let timeLeft = 0;
-    let sha = null;
-    const timerEl = document.getElementById('timer');
+let timeLeft = INITIAL_TIME;
+let sha = null;
 
-    async function fetchTime() {
-      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
-        headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
-      });
-      if (!res.ok) {
-        timerEl.textContent = 'Error loading time.json';
-        throw new Error('Failed to fetch time.json');
-      }
-      const data = await res.json();
-      sha = data.sha;
-      const content = JSON.parse(atob(data.content));
-      timeLeft = content.timeLeft;
-    }
+async function fetchTime() {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`);
+    if (!res.ok) throw new Error('Failed to fetch time.json: ' + res.status);
+    const data = await res.json();
+    sha = data.sha;
+    const content = atob(data.content);
+    const json = JSON.parse(content);
+    timeLeft = json.timeLeft ?? INITIAL_TIME;
+    updateDisplay();
+  } catch (e) {
+    console.error(e);
+    TIMER_ELEMENT.textContent = 'Error loading timer';
+  }
+}
 
-    async function updateTime() {
-      const content = btoa(JSON.stringify({ timeLeft }, null, 2));
-      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: 'Timer update',
-          content: content,
-          sha: sha
-        })
-      });
-      if (!res.ok) {
-        console.error('Failed to update time.json');
-        return;
-      }
-      const data = await res.json();
-      sha = data.content.sha;
-    }
+function formatTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+}
 
-    function formatTime(seconds) {
-      const hrs = Math.floor(seconds / 3600).toString().padStart(2, '0');
-      const mins = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-      const secs = (seconds % 60).toString().padStart(2, '0');
-      return `${hrs}:${mins}:${secs}`;
-    }
+function updateDisplay() {
+  TIMER_ELEMENT.textContent = formatTime(timeLeft);
+}
 
-    // Fullscreen on double tap
-    let lastTap = 0;
-    document.body.addEventListener('touchend', (e) => {
-      const currentTime = new Date().getTime();
-      const tapLength = currentTime - lastTap;
-      if (tapLength < 500 && tapLength > 0) {
-        const el = document.documentElement;
-        if (el.requestFullscreen) {
-          el.requestFullscreen();
-        } else if (el.webkitRequestFullscreen) {
-          el.webkitRequestFullscreen();
-        } else if (el.msRequestFullscreen) {
-          el.msRequestFullscreen();
-        }
-      }
-      lastTap = currentTime;
+async function updateTimeOnGitHub() {
+  try {
+    const content = btoa(JSON.stringify({timeLeft}, null, 2));
+    const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: 'Update timer',
+        content: content,
+        sha: sha
+      })
     });
-
-    async function startTimer() {
-      try {
-        await fetchTime();
-      } catch {
-        return;
-      }
-
-      timerEl.textContent = formatTime(timeLeft);
-
-      setInterval(async () => {
-        if (timeLeft > 0) {
-          timeLeft--;
-          timerEl.textContent = formatTime(timeLeft);
-          await updateTime();
-        } else {
-          timerEl.textContent = "Time's up!";
-        }
-      }, 1000);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`GitHub update error: ${res.status} ${text}`);
     }
+    const data = await res.json();
+    sha = data.content.sha; // update SHA for next update
+  } catch (e) {
+    console.error(e);
+  }
+}
 
-    startTimer();
-  </script>
+// Decrement time every second, update display & push update every 5 seconds to avoid rate limits
+let updateCounter = 0;
+async function tick() {
+  if (timeLeft > 0) {
+    timeLeft--;
+    updateDisplay();
+    updateCounter++;
+    if (updateCounter >= 5) {
+      updateCounter = 0;
+      await updateTimeOnGitHub();
+    }
+  } else {
+    TIMER_ELEMENT.textContent = 'Time is up!';
+  }
+}
+
+// Fullscreen on double tap (for phone)
+let lastTap = 0;
+document.body.addEventListener('touchend', e => {
+  const currentTime = new Date().getTime();
+  const tapLength = currentTime - lastTap;
+  if (tapLength < 300 && tapLength > 0) {
+    const docEl = document.documentElement;
+    if (docEl.requestFullscreen) docEl.requestFullscreen();
+    else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+    else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
+  }
+  lastTap = currentTime;
+});
+
+// Initialize
+(async () => {
+  await fetchTime();
+  setInterval(tick, 1000);
+})();
+</script>
 </body>
 </html>
-
