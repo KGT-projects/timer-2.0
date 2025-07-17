@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      color: black;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10vw;
+      font-family: sans-serif;
+      overflow: hidden;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    #timer {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="timer">Loading...</div>
+
+  <script>
+    const url = 'https://raw.githubusercontent.com/KGT-projects/remote/main/time.json';
+    let timeLeft = 0;
+
+    async function fetchTime() {
+      try {
+        const res = await fetch(url + '?cache=' + Date.now());
+        const data = await res.json();
+        timeLeft = data.start;
+        updateDisplay();
+      } catch (e) {
+        document.getElementById("timer").textContent = "Error loading time";
+      }
+    }
+
+    function updateDisplay() {
+      const h = Math.floor(timeLeft / 3600);
+      const m = Math.floor((timeLeft % 3600) / 60);
+      const s = timeLeft % 60;
+      document.getElementById("timer").textContent =
+        `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    fetchTime();
+
+    setInterval(() => {
+      if (timeLeft > 0) {
+        timeLeft--;
+        updateDisplay();
+      }
+    }, 1000);
+
+    // Double-tap detection
+    let lastTap = 0;
+    document.body.addEventListener("touchend", () => {
+      const now = new Date().getTime();
+      if (now - lastTap < 500) {
+        goFullscreen();
+      }
+      lastTap = now;
+    });
+
+    document.body.addEventListener("dblclick", goFullscreen); // also works on desktop
+
+    function goFullscreen() {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen();
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen();
+      }
+    }
+  </script>
+</body>
+</html>
