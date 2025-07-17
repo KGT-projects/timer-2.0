@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timer Control</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+    }
+    button {
+      font-size: 1.2rem;
+      padding: 1rem;
+      margin-right: 1rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Timer Control</h1>
+  <button onclick="adjustTime(-14400)">-4 uur</button>
+  <button onclick="resetTime()">Reset naar 32 uur</button>
+
+  <h3>GitHub Token:</h3>
+  <input id="token" placeholder="plak je GitHub token hier" />
+
+  <script>
+    const repoOwner = "KGT-projects";
+    const repoName = "remote";
+    const filePath = "time.json";
+
+    async function getCurrentTime(token) {
+      const res = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+        headers: { Authorization: `token ${token}` }
+      });
+      const data = await res.json();
+      const content = atob(data.content);
+      return {
+        sha: data.sha,
+        timeLeft: JSON.parse(content).timeLeft
+      };
+    }
+
+    async function updateTime(newTime, token) {
+      const { sha } = await getCurrentTime(token);
+      const updatedContent = btoa(JSON.stringify({ timeLeft: newTime }));
+
+      await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `token ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: "Update timer",
+          content: updatedContent,
+          sha: sha
+        })
+      });
+
+      alert("Tijd succesvol aangepast!");
+    }
+
+    async function adjustTime(amount) {
+      const token = document.getElementById("token").value.trim();
+      if (!token) return alert("Plak je GitHub token eerst!");
+      const { timeLeft } = await getCurrentTime(token);
+      updateTime(Math.max(0, timeLeft + amount), token);
+    }
+
+    function resetTime() {
+      adjustTime(115200); // reset to 32 hours
+    }
+  </script>
+</body>
+</html>
