@@ -1,83 +1,44 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>Control Page</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2em;
-      background: #f9f9f9;
-    }
-    button {
-      padding: 1em 2em;
-      margin: 1em;
-      font-size: 1.2em;
-    }
-  </style>
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Control</title></head>
 <body>
-  <h1>Control Panel</h1>
-  <button onclick="subtractTime(4 * 3600)">-4 Hours</button>
-  <button onclick="resetTime()">Reset to 32 Hours</button>
+  <button onclick="subtract(4 * 3600)">−4 hours</button>
+  <button onclick="reset()">Reset (32 h)</button>
 
   <script>
-    const GITHUB_TOKEN = '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';
-    const OWNER = 'KGT-projects';
-    const REPO = 'timer-2.0';
-    const FILE_PATH = 'time.json';
-    const BRANCH = 'main';
+    const GITHUB_TOKEN = 'YOUR_TOKEN';
+    const BASE = 'https://api.github.com/repos/KGT-projects/timer-2.0/contents/time.json';
 
-    async function getCurrentFileSha() {
-      const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`, {
-        headers: {
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
-          Accept: 'application/vnd.github+json'
-        }
-      });
+    async function fetchState() {
+      const res = await fetch(BASE, { headers: { Authorization: `Bearer ${GITHUB_TOKEN}` } });
       const json = await res.json();
-      return { sha: json.sha, content: JSON.parse(atob(json.content)) };
+      return { sha: json.sha, value: JSON.parse(atob(json.content)).timeLeft };
     }
 
-    async function updateTime(newTime) {
-      const { sha } = await getCurrentFileSha();
-
-      const updatedContent = {
-        timeLeft: newTime
-      };
-
-      const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`, {
+    async function save(newSeconds) {
+      const { sha } = await fetchState();
+      await fetch(BASE, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${GITHUB_TOKEN}`,
-          Accept: 'application/vnd.github+json'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: 'Update time',
-          content: btoa(JSON.stringify(updatedContent, null, 2)),
-          branch: BRANCH,
-          sha: sha
+          message: 'Update timer',
+          content: btoa(JSON.stringify({ timeLeft: newSeconds }, null, 2)),
+          sha
         })
       });
-
-      if (res.ok) {
-        alert("Time updated!");
-      } else {
-        alert("Error updating time!");
-        console.error(await res.text());
-      }
+      alert('Updated to ' + newSeconds + ' seconds');
     }
 
-    async function subtractTime(amount) {
-      const { content } = await getCurrentFileSha();
-      const newTime = Math.max(0, content.timeLeft - amount);
-      await updateTime(newTime);
+    async function subtract(sec) {
+      const { value } = await fetchState();
+      await save(Math.max(0, value - sec));
     }
 
-    async function resetTime() {
-      await updateTime(32 * 3600); // 32 hours
+    async function reset() {
+      await save(32 * 3600);
     }
   </script>
 </body>
