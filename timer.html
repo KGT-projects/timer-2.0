@@ -1,76 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Timer</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timer</title>
   <style>
-    html, body {
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
       background: white;
+      color: black;
       display: flex;
       align-items: center;
       justify-content: center;
+      height: 100vh;
+      font-size: 3rem;
       font-family: sans-serif;
-      user-select: none;
-    }
-
-    #timer {
-      font-size: 10vw;
-      color: black;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div id="timer">Loading...</div>
-
+  <div id="timer">Laden...</div>
   <script>
-    // Go fullscreen when user taps
-    document.addEventListener('click', () => {
-      const el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); // Safari
-      else if (el.msRequestFullscreen) el.msRequestFullscreen(); // IE/Edge
-    });
-
-    // Fetch JSON time
-    async function fetchTime() {
-      const res = await fetch('time.json?_=' + new Date().getTime());
+    async function loadTime() {
+      const res = await fetch('time.json', { cache: 'no-store' });
       const data = await res.json();
       return data.timeLeft;
     }
 
-    // Format to HH:MM:SS
     function formatTime(seconds) {
-      const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
-      const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
-      const s = String(seconds % 60).padStart(2, '0');
-      return `${h}:${m}:${s}`;
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
-
-    const timerEl = document.getElementById('timer');
-    let timeLeft = 0;
 
     async function startTimer() {
-      timeLeft = await fetchTime();
-      updateDisplay();
-
-      setInterval(async () => {
-        timeLeft--;
-        if (timeLeft < 0) timeLeft = 0;
-        updateDisplay();
+      let timeLeft = await loadTime();
+      const timerEl = document.getElementById('timer');
+      setInterval(() => {
+        if (timeLeft > 0) {
+          timeLeft--;
+          timerEl.textContent = formatTime(timeLeft);
+        }
       }, 1000);
-
-      setInterval(async () => {
-        const newTime = await fetchTime();
-        timeLeft = newTime;
-      }, 3000); // sync with server every 3s
-    }
-
-    function updateDisplay() {
-      timerEl.textContent = formatTime(timeLeft);
     }
 
     startTimer();
