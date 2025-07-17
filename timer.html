@@ -1,79 +1,83 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Timer</title>
-<style>
-  html, body { margin:0; padding:0; width:100%; height:100%;
-    display:flex; align-items:center; justify-content:center;
-    background:white; color:black; font-family:sans-serif; user-select:none;
-  }
-  #timer { font-size:10vw; text-align:center; }
-</style>
+  <title>Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      color: black;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 5em;
+      font-family: sans-serif;
+      user-select: none;
+      touch-action: manipulation;
+    }
+  </style>
 </head>
 <body>
-  <div id="timer">--:--:--</div>
-<script>
-const TOKEN = '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';
-const REPO = 'KGT-projects/timer-2.0';
-const PATH = 'time.json';
-  
+  <div id="timer">Loading…</div>
 
-let timeLeft = 115200;
-let sha = null;
-const timerEl = document.getElementById('timer');
-let tickCount = 0;
+  <script>
+    const timerEl = document.getElementById("timer");
 
-function fmt(sec){
-  const h = Math.floor(sec/3600).toString().padStart(2,'0'),
-        m = Math.floor(sec%3600/60).toString().padStart(2,'0'),
-        s = (sec%60).toString().padStart(2,'0');
-  return `${h}:${m}:${s}`;
-}
+    async function fetchEndTime() {
+      try {
+        const response = await fetch("time.json?_=" + new Date().getTime());
+        const data = await response.json();
+        return new Date(data.endTime);
+      } catch (err) {
+        timerEl.textContent = "Error loading time.";
+        console.error(err);
+      }
+    }
 
-async function load(){
-  const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`);
-  const j = await r.json();
-  sha = j.sha;
-  timeLeft = JSON.parse(atob(j.content)).timeLeft;
-}
+    function formatTime(ms) {
+      const totalSec = Math.max(0, Math.floor(ms / 1000));
+      const hrs = String(Math.floor(totalSec / 3600)).padStart(2, "0");
+      const min = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
+      const sec = String(totalSec % 60).padStart(2, "0");
+      return `${hrs}:${min}:${sec}`;
+    }
 
-async function save(){
-  const body = btoa(JSON.stringify({ timeLeft },null,2));
-  await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer '+TOKEN,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      message: 'Timer update',
-      content: body,
-      sha
-    })
-  }).then(res => res.json()).then(j => { sha = j.content.sha });
-}
+    async function startTimer() {
+      const endTime = await fetchEndTime();
+      if (!endTime) return;
 
-async function tick(){
-  timeLeft = Math.max(0, timeLeft - 1);
-  timerEl.textContent = fmt(timeLeft);
-  tickCount++;
-  if(tickCount >= 5){
-    tickCount = 0;
-    await save();
-  }
-}
+      function update() {
+        const now = new Date();
+        const diff = endTime - now;
+        if (diff <= 0) {
+          timerEl.textContent = "00:00:00";
+          clearInterval(interval);
+        } else {
+          timerEl.textContent = formatTime(diff);
+        }
+      }
 
-document.body.addEventListener('click',()=>{
-  document.documentElement.requestFullscreen?.();
-});
+      update();
+      const interval = setInterval(update, 1000);
+    }
 
-(async ()=>{
-  await load();
-  timerEl.textContent = fmt(timeLeft);
-  setInterval(tick,1000);
-})();
-</script>
+    // Fullscreen on double tap
+    let lastTap = 0;
+    document.addEventListener("touchend", function(e) {
+      const now = Date.now();
+      if (now - lastTap < 300) {
+        const doc = document.documentElement;
+        if (doc.requestFullscreen) doc.requestFullscreen();
+        else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
+        else if (doc.msRequestFullscreen) doc.msRequestFullscreen();
+      }
+      lastTap = now;
+    });
+
+    startTimer();
+  </script>
 </body>
 </html>
