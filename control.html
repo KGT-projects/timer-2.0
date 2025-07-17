@@ -1,57 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8">
-<title>Timer Control</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-  body { display:flex; flex-direction:column;
-    justify-content:center; align-items:center;
-    height:100vh; margin:0; font-family:sans-serif;
-    background:#f8f8f8;
-  }
-  button { padding:1rem 2rem; font-size:1.2rem; margin:0.5rem; cursor:pointer; }
-  #status { margin-top:1rem; color:green; }
-</style>
+<html>
+<head>
+  <title>Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+      padding: 2rem;
+    }
+    button {
+      font-size: 1.5rem;
+      padding: 1rem;
+      margin: 1rem;
+    }
+  </style>
 </head>
 <body>
-  <button id="sub">Subtract 4 Hours</button>
-  <button id="rst">Reset to 32 Hours</button>
-  <div id="status"></div>
-<script>
-const TOKEN = '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';
-const REPO = 'KGT-projects/timer-2.0';
-const PATH = 'time.json';
-const init = 115200, delta = 14400;
-let sha = null;
+  <h1>Control Panel</h1>
+  <button onclick="adjustTime(-4)">Subtract 4 Hours</button>
+  <button onclick="resetTime()">Reset Timer</button>
 
-async function getTime(){
-  const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`);
-  const j = await r.json();
-  sha = j.sha;
-  return JSON.parse(atob(j.content)).timeLeft;
-}
-async function setTime(v){
-  const content = btoa(JSON.stringify({ timeLeft: v },null,2));
-  await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
-    method:'PUT',
-    headers:{ Authorization:'Bearer '+TOKEN,'Content-Type':'application/json' },
-    body: JSON.stringify({ message:'Control update', content, sha })
-  }).then(r=>r.json()).then(j=>{ sha=j.content.sha });
-}
-async function sub4(){
-  let t= await getTime();
-  t = Math.max(0, t-delta);
-  await setTime(t);
-  status.innerText='-4 hours done';
-}
-async function reset(){
-  await getTime();
-  await setTime(init);
-  status.innerText='Reset done';
-}
+  <script>
+    const token = "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";
+    const username = "KGT-projects";
+    const repo = "timer-2.0";
+    const filePath = "time.json";
+    const branch = "main";
 
-sub.addEventListener('click', sub4);
-rst.addEventListener('click', reset);
-</script>
+    async function getSha() {
+      const res = await fetch(`https://api.github.com/repos/${username}/${repo}/contents/${filePath}`);
+      const data = await res.json();
+      return data.sha;
+    }
+
+    async function updateTime(newEndTime) {
+      const sha = await getSha();
+      const newContent = btoa(JSON.stringify({ endTime: newEndTime }));
+      const res = await fetch(`https://api.github.com/repos/${username}/${repo}/contents/${filePath}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `token ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: "Update timer",
+          content: newContent,
+          branch: branch,
+          sha: sha
+        })
+      });
+
+      if (res.ok) {
+        alert("Timer updated!");
+      } else {
+        alert("Error updating: " + (await res.text()));
+      }
+    }
+
+    function resetTime() {
+      const now = new Date();
+      const future = new Date(now.getTime() + 32 * 3600 * 1000);
+      updateTime(future.toISOString());
+    }
+
+    async function adjustTime(hours) {
+      const res = await fetch(`https://raw.githubusercontent.com/${username}/${repo}/main/${filePath}?_=${Date.now()}`);
+      const data = await res.json();
+      const endTime = new Date(data.endTime);
+      const adjusted = new Date(endTime.getTime() + hours * 3600 * 1000);
+      updateTime(adjusted.toISOString());
+    }
+  </script>
 </body>
 </html>
