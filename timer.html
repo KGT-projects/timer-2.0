@@ -1,51 +1,122 @@
 <!DOCTYPE html>
-<html>
-<head><title>Timer</title><meta name="viewport" content="width=device-width,width=1"><style>
-  body { margin:0; height:100vh; display:flex; font-size:8vw; justify-content:center; align-items:center; background:white;color:black;font-family:sans-serif;}
-  #timer{touch-action:none;}
-</style></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Remote Timer</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      background: white;
+      color: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 6rem;
+      font-family: sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #timer {
+      cursor: default;
+    }
+  </style>
+</head>
 <body>
-  <div id="timer">--:--:--</div>
+  <div id="timer">Loading...</div>
+
   <script>
-    let timeLeft = 0, lastSync = 0;
+    const GITHUB_TOKEN = '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'; // <-- Replace with your GitHub token
+    const REPO = 'KGT-projects/timer-2.0'; // <-- Your repo here (user/repo)
+    const FILE_PATH = 'time.json';
 
-    function hhmmss(sec) {
-      const h = String(Math.floor(sec/3600)).padStart(2,0);
-      const m = String(Math.floor(sec%3600/60)).padStart(2,0);
-      const s = String(sec%60).padStart(2,0);
-      return `${h}:${m}:${s}`;
-    }
+    let timeLeft = 0;
+    let sha = null;
+    const timerEl = document.getElementById('timer');
 
-    async function syncTime() {
-      const res = await fetch('time.json?nocache=' + Date.now());
-      const data = await res.json();
-      timeLeft = data.timeLeft;
-      lastSync = Date.now();
-      display();
-    }
-
-    function display() {
-      document.getElementById('timer').textContent = hhmmss(timeLeft);
-    }
-
-    setInterval(() => {
-      const elapsed = Math.floor((Date.now() - lastSync) / 1000);
-      timeLeft = Math.max(0, timeLeft - elapsed);
-      lastSync = Date.now();
-      display();
-    }, 1000);
-
-    setInterval(syncTime, 3000);
-    syncTime();
-
-    let lastTap=0;
-    document.body.addEventListener('touchend', () => {
-      const now=Date.now();
-      if (now-lastTap<300) {
-        document.documentElement.requestFullscreen?.();
+    async function fetchTime() {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+        headers: { Authorization: `Bearer ${GITHUB_TOKEN}` }
+      });
+      if (!res.ok) {
+        timerEl.textContent = 'Error loading time.json';
+        throw new Error('Failed to fetch time.json');
       }
-      lastTap=now;
+      const data = await res.json();
+      sha = data.sha;
+      const content = JSON.parse(atob(data.content));
+      timeLeft = content.timeLeft;
+    }
+
+    async function updateTime() {
+      const content = btoa(JSON.stringify({ timeLeft }, null, 2));
+      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'Timer update',
+          content: content,
+          sha: sha
+        })
+      });
+      if (!res.ok) {
+        console.error('Failed to update time.json');
+        return;
+      }
+      const data = await res.json();
+      sha = data.content.sha;
+    }
+
+    function formatTime(seconds) {
+      const hrs = Math.floor(seconds / 3600).toString().padStart(2, '0');
+      const mins = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+      const secs = (seconds % 60).toString().padStart(2, '0');
+      return `${hrs}:${mins}:${secs}`;
+    }
+
+    // Fullscreen on double tap
+    let lastTap = 0;
+    document.body.addEventListener('touchend', (e) => {
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTap;
+      if (tapLength < 500 && tapLength > 0) {
+        const el = document.documentElement;
+        if (el.requestFullscreen) {
+          el.requestFullscreen();
+        } else if (el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+          el.msRequestFullscreen();
+        }
+      }
+      lastTap = currentTime;
     });
+
+    async function startTimer() {
+      try {
+        await fetchTime();
+      } catch {
+        return;
+      }
+
+      timerEl.textContent = formatTime(timeLeft);
+
+      setInterval(async () => {
+        if (timeLeft > 0) {
+          timeLeft--;
+          timerEl.textContent = formatTime(timeLeft);
+          await updateTime();
+        } else {
+          timerEl.textContent = "Time's up!";
+        }
+      }, 1000);
+    }
+
+    startTimer();
   </script>
 </body>
 </html>
+
