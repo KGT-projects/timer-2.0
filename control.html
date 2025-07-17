@@ -1,80 +1,83 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <title>Control Page</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Timer Control</title>
   <style>
     body {
       font-family: sans-serif;
-      padding: 2rem;
+      text-align: center;
+      padding: 2em;
+      background: #f9f9f9;
     }
     button {
-      font-size: 1.2rem;
-      padding: 1rem;
-      margin-right: 1rem;
-    }
-    input {
-      width: 100%;
-      padding: 0.5rem;
-      margin-top: 1rem;
+      padding: 1em 2em;
+      margin: 1em;
+      font-size: 1.2em;
     }
   </style>
 </head>
 <body>
-  <h1>Timer Control</h1>
-  <button onclick="adjustTime(-14400)">-4 uur</button>
-  <button onclick="resetTime()">Reset naar 32 uur</button>
-
-  <h3>GitHub Token:</h3>
-  <input id="token" placeholder="plak je GitHub token hier" />
+  <h1>Control Panel</h1>
+  <button onclick="subtractTime(4 * 3600)">-4 Hours</button>
+  <button onclick="resetTime()">Reset to 32 Hours</button>
 
   <script>
-    const repoOwner = "KGT-projects";
-    const repoName = "remote";
-    const filePath = "time.json";
+    const GITHUB_TOKEN = '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';
+    const OWNER = 'KGT-projects';
+    const REPO = 'timer-2.0';
+    const FILE_PATH = 'time.json';
+    const BRANCH = 'main';
 
-    async function getCurrentTime(token) {
-      const res = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
-        headers: { Authorization: `token ${token}` }
+    async function getCurrentFileSha() {
+      const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`, {
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: 'application/vnd.github+json'
+        }
       });
-      const data = await res.json();
-      const content = atob(data.content);
-      return {
-        sha: data.sha,
-        timeLeft: JSON.parse(content).timeLeft
-      };
+      const json = await res.json();
+      return { sha: json.sha, content: JSON.parse(atob(json.content)) };
     }
 
-    async function updateTime(newTime, token) {
-      const { sha } = await getCurrentTime(token);
-      const updatedContent = btoa(JSON.stringify({ timeLeft: newTime }));
+    async function updateTime(newTime) {
+      const { sha } = await getCurrentFileSha();
 
-      await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
-        method: "PUT",
+      const updatedContent = {
+        timeLeft: newTime
+      };
+
+      const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`, {
+        method: 'PUT',
         headers: {
-          Authorization: `token ${token}`,
-          "Content-Type": "application/json"
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: 'application/vnd.github+json'
         },
         body: JSON.stringify({
-          message: "Update timer",
-          content: updatedContent,
+          message: 'Update time',
+          content: btoa(JSON.stringify(updatedContent, null, 2)),
+          branch: BRANCH,
           sha: sha
         })
       });
 
-      alert("Tijd succesvol aangepast!");
+      if (res.ok) {
+        alert("Time updated!");
+      } else {
+        alert("Error updating time!");
+        console.error(await res.text());
+      }
     }
 
-    async function adjustTime(amount) {
-      const token = document.getElementById("token").value.trim();
-      if (!token) return alert("Plak je GitHub token eerst!");
-      const { timeLeft } = await getCurrentTime(token);
-      updateTime(Math.max(0, timeLeft + amount), token);
+    async function subtractTime(amount) {
+      const { content } = await getCurrentFileSha();
+      const newTime = Math.max(0, content.timeLeft - amount);
+      await updateTime(newTime);
     }
 
-    function resetTime() {
-      adjustTime(115200); // reset to 32 hours
+    async function resetTime() {
+      await updateTime(32 * 3600); // 32 hours
     }
   </script>
 </body>
