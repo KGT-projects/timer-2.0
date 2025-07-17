@@ -1,52 +1,76 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
   <title>Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
       background: white;
-      color: black;
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
-      font-size: 3rem;
       font-family: sans-serif;
-      text-align: center;
+      user-select: none;
     }
-    
+
+    #timer {
+      font-size: 10vw;
+      color: black;
+    }
   </style>
 </head>
 <body>
-  <div id="timer">Laden...</div>
+  <div id="timer">Loading...</div>
+
   <script>
-    async function loadTime() {
-      const res = await fetch('time.json', { cache: 'no-store' });
+    // Go fullscreen when user taps
+    document.addEventListener('click', () => {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); // Safari
+      else if (el.msRequestFullscreen) el.msRequestFullscreen(); // IE/Edge
+    });
+
+    // Fetch JSON time
+    async function fetchTime() {
+      const res = await fetch('time.json?_=' + new Date().getTime());
       const data = await res.json();
       return data.timeLeft;
     }
 
+    // Format to HH:MM:SS
     function formatTime(seconds) {
-      const hrs = Math.floor(seconds / 3600);
-      const mins = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+      const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+      const s = String(seconds % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
     }
 
+    const timerEl = document.getElementById('timer');
+    let timeLeft = 0;
+
     async function startTimer() {
-      let timeLeft = await loadTime();
-      const timerEl = document.getElementById('timer');
-      setInterval(() => {
-        if (timeLeft > 0) {
-          timeLeft--;
-          timerEl.textContent = formatTime(timeLeft);
-        }
+      timeLeft = await fetchTime();
+      updateDisplay();
+
+      setInterval(async () => {
+        timeLeft--;
+        if (timeLeft < 0) timeLeft = 0;
+        updateDisplay();
       }, 1000);
-      let lastTap = 0;document.body.addEventListener("touchend", () => {const now = new Date().getTime();if (now - lastTap < 500) {goFullscreen();}lastTap = now;});document.body.addEventListener("dblclick", goFullscreen); 
-      goFullscreen() {const docEl = document.documentElement;if (docEl.requestFullscreen) {docEl.requestFullscreen();} else if (docEl.webkitRequestFullscreen) {docEl.webkitRequestFullscreen();} else if (docEl.msRequestFullscreen) {docEl.msRequestFullscreen();}
+
+      setInterval(async () => {
+        const newTime = await fetchTime();
+        timeLeft = newTime;
+      }, 3000); // sync with server every 3s
+    }
+
+    function updateDisplay() {
+      timerEl.textContent = formatTime(timeLeft);
     }
 
     startTimer();
