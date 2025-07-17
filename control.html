@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Timer Control</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 2rem;
+    background: #f9f9f9;
+    color: #222;
+  }
+  button {
+    padding: 1rem 2rem;
+    font-size: 1.5rem;
+    margin: 1rem;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<h1>Timer Control Panel</h1>
+<button id="subtract">Subtract 4 hours</button>
+<button id="reset">Reset to 32 hours</button>
+<div id="status"></div>
+
+<script>
+const REPO = 'KGT-projects/timer-2.0';
+const FILE_PATH = 'time.json';
+const GITHUB_TOKEN = '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'; // Replace with your token
+
+const statusEl = document.getElementById('status');
+let sha = null;
+
+async function fetchShaAndTime() {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`);
+    if (!res.ok) throw new Error('Failed to fetch time.json: ' + res.status);
+    const data = await res.json();
+    sha = data.sha;
+    return JSON.parse(atob(data.content));
+  } catch (e) {
+    statusEl.textContent = e.message;
+    throw e;
+  }
+}
+
+async function updateTime(timeLeft) {
+  try {
+    const content = btoa(JSON.stringify({timeLeft}, null, 2));
+    const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: 'Control panel update',
+        content,
+        sha
+      })
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`GitHub update error: ${res.status} ${text}`);
+    }
+    const data = await res.json();
+    sha = data.content.sha;
+    statusEl.textContent = 'Updated successfully!';
+  } catch (e) {
+    statusEl.textContent = e.message;
+  }
+}
+
+document.getElementById('subtract').onclick = async () => {
+  try {
+    const json = await fetchShaAndTime();
+    let newTime = json.timeLeft - 14400; // subtract 4 hours (4*3600)
+    if (newTime < 0) newTime = 0;
+    await updateTime(newTime);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+document.getElementById('reset').onclick = async () => {
+  try {
+    await fetchShaAndTime();
+    await updateTime(115200); // reset to 32 hours
+  } catch (e) {
+    console.error(e);
+  }
+};
+</script>
+</body>
+</html>
