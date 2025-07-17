@@ -1,53 +1,51 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Timer</title>
-  <style>
-    body {
-      margin: 0;
-      background: white;
-      color: black;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      font-size: 3rem;
-      font-family: sans-serif;
-      text-align: center;
-      
-    }
-  </style>
-</head>
+<head><title>Timer</title><meta name="viewport" content="width=device-width,width=1"><style>
+  body { margin:0; height:100vh; display:flex; font-size:8vw; justify-content:center; align-items:center; background:white;color:black;font-family:sans-serif;}
+  #timer{touch-action:none;}
+</style></head>
 <body>
-  <div id="timer">Laden...</div>
+  <div id="timer">--:--:--</div>
   <script>
-    async function loadTime() {
-      const res = await fetch('time.json', { cache: 'no-store' });
+    let timeLeft = 0, lastSync = 0;
+
+    function hhmmss(sec) {
+      const h = String(Math.floor(sec/3600)).padStart(2,0);
+      const m = String(Math.floor(sec%3600/60)).padStart(2,0);
+      const s = String(sec%60).padStart(2,0);
+      return `${h}:${m}:${s}`;
+    }
+
+    async function syncTime() {
+      const res = await fetch('time.json?nocache=' + Date.now());
       const data = await res.json();
-      return data.timeLeft;
+      timeLeft = data.timeLeft;
+      lastSync = Date.now();
+      display();
     }
 
-    function formatTime(seconds) {
-      const hrs = Math.floor(seconds / 3600);
-      const mins = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    function display() {
+      document.getElementById('timer').textContent = hhmmss(timeLeft);
     }
 
-    async function startTimer() {
-      let timeLeft = await loadTime();
-      const timerEl = document.getElementById('timer');
-      setInterval(() => {
-        if (timeLeft > 0) {
-          timeLeft--;
-          timerEl.textContent = formatTime(timeLeft);
-        }
-      }, 1000);
-    }
+    setInterval(() => {
+      const elapsed = Math.floor((Date.now() - lastSync) / 1000);
+      timeLeft = Math.max(0, timeLeft - elapsed);
+      lastSync = Date.now();
+      display();
+    }, 1000);
 
-    startTimer();
+    setInterval(syncTime, 3000);
+    syncTime();
+
+    let lastTap=0;
+    document.body.addEventListener('touchend', () => {
+      const now=Date.now();
+      if (now-lastTap<300) {
+        document.documentElement.requestFullscreen?.();
+      }
+      lastTap=now;
+    });
   </script>
 </body>
 </html>
