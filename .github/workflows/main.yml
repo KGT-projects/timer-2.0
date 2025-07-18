@@ -1,0 +1,40 @@
+name: Update Timer
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  update-timer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Parse command from issue title
+        id: parse
+        run: |
+          echo "TITLE=${{ github.event.issue.title }}" >> $GITHUB_ENV
+
+      - name: Adjust time.json
+        run: |
+          FILE="time.json"
+          COMMAND="${{ env.TITLE }}"
+
+          echo "Command from issue: $COMMAND"
+
+          if [ "$COMMAND" == "reset" ]; then
+            NEW_TIME=$(date -u -d "+32 hours" +"%Y-%m-%dT%H:%M:%SZ")
+          elif [ "$COMMAND" == "minus4" ]; then
+            END_TIME=$(jq -r .end < $FILE)
+            NEW_TIME=$(date -u -d "$END_TIME - 4 hours" +"%Y-%m-%dT%H:%M:%SZ")
+          else
+            echo "Unknown command."
+            exit 1
+          fi
+
+          echo "{ \"end\": \"$NEW_TIME\" }" > $FILE
+
+      - name: Commit and push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update timer via ${{ env.TITLE }} command"
