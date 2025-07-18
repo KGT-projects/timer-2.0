@@ -1,4 +1,5 @@
-name: Update Timer
+name: Update Timer JSON via Issues
+
 on:
   issues:
     types: [opened]
@@ -6,35 +7,37 @@ on:
 jobs:
   update-timer:
     runs-on: ubuntu-latest
+    if: github.event.issue.title == 'reset' || github.event.issue.title == 'minus4'
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-      - name: Parse command from issue title
-        id: parse
-        run: |
-          echo "TITLE=${{ github.event.issue.title }}" >> $GITHUB_ENV
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Adjust time.json
-        run: |
-          FILE="time.json"
-          COMMAND="${{ env.TITLE }}"
+    - name: Read and modify time.json
+      run: |
+        NOW=$(date -u +%s)
+        if [[ "${{ github.event.issue.title }}" == "reset" ]]; then
+          NEW_END=$((NOW + 32 * 3600))
+        elif [[ "${{ github.event.issue.title }}" == "minus4" ]]; then
+          END=$(jq .end_time time.json)
+          NEW_END=$((END - 4 * 3600))
+        fi
+        echo "{\"end_time\": $NEW_END}" > time.json
 
-          echo "Command from issue: $COMMAND"
+    - name: Commit changes
+      run: |
+        git add time.json
+        git commit -m "Update time.json via issue '${{ github.event.issue.title }}'"
+        git push
 
-          if [ "$COMMAND" == "reset" ]; then
-            NEW_TIME=$(date -u -d "+32 hours" +"%Y-%m-%dT%H:%M:%SZ")
-          elif [ "$COMMAND" == "minus4" ]; then
-            END_TIME=$(jq -r .end < $FILE)
-            NEW_TIME=$(date -u -d "$END_TIME - 4 hours" +"%Y-%m-%dT%H:%M:%SZ")
-          else
-            echo "Unknown command."
-            exit 1
-          fi
-
-          echo "{ \"end\": \"$NEW_TIME\" }" > $FILE
-
-      - name: Commit and push
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Update timer via ${{ env.TITLE }} command"
+    - name: Close issue
+      run: |
+        curl -X PATCH \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }} \
+          -d '{"state": "closed"}'
