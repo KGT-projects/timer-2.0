@@ -1,92 +1,31 @@
 <!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Timer</title>
-  <style>
-    html, body {
-      margin:0; padding:0; height:100%;
-      display:flex;
-      justify-content:center; align-items:center;
-      background:white; color:black;
-      font-family:sans-serif;
-    }
-    
-    
-    #timer {
-      font-size: 12vw;
-      text-align:center;
-      user-select:none;
-      touch-action:none;
-    }
-  </style>
-</head>
-<body>
-  <div id="timer">--:--:--</div>
-
-  <script>
-    const REPO = 'KGT-projects/timer-2.0';
-    const PATH = 'time.json';
-    const TOKEN = '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'; // Plaats hier jouw token
-
-    let timeLeft = 115200;
-    let sha = null;
-    const timerEl = document.getElementById('timer');
-
-    function formatTime(sec) {
-      const h = String(Math.floor(sec/3600)).padStart(2,'0');
-      const m = String(Math.floor(sec%3600/60)).padStart(2,'0');
-      const s = String(sec%60).padStart(2,'0');
-      return `${h}:${m}:${s}`;
-    }
-
-    async function loadTime() {
-      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`);
-      const j = await res.json();
-      sha = j.sha;
-      const data = JSON.parse(atob(j.content));
-      timeLeft = data.timeLeft;
-    }
-
-    async function saveTime() {
-      const body = btoa(JSON.stringify({ timeLeft }, null, 2));
-      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `token ${TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: 'Timer update', content: body, sha })
-      });
-      const j = await res.json();
-      sha = j.content.sha;
-    }
-
-    function tick() {
-      if (timeLeft > 0) {
-        timeLeft--;
-        timerEl.textContent = formatTime(timeLeft);
-      } else timerEl.textContent = '00:00:00';
-    }
-
-    // Fullscreen op dubbele tik
-    let lastTap = 0;
-    document.addEventListener('touchend', e => {
-      const now = Date.now();
-      if (now - lastTap < 300) {
-        document.documentElement.requestFullscreen?.();
-      }
-      lastTap = now;
-    });
-
-    (async () => {
-      await loadTime();
-      timerEl.textContent = formatTime(timeLeft);
-      setInterval(tick, 1000);
-      setInterval(saveTime, 5000); // opslaan elke 5 sec
-    })();
-  </script>
-</body>
-</html>
-
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Timer</title><style>
+body{margin:0;display:flex;height:100vh;align-items:center;justify-content:center;background:#fff;color:#000;font-family:sans-serif;}
+#t{font-size:12vw;user-select:none;touch-action:none;}
+</style></head><body><div id="t">--:--:--</div>
+<script>
+async function getTime() {
+  const r = await fetch('time.json?_=' + Date.now());
+  const j = await r.json();
+  return j.end_time * 1000;
+}
+let end=Date.now()+115200000; // fallback
+async function init(){
+  const ms = await getTime();
+  end = ms;
+  tick();
+  setInterval(tick,1000);
+}
+function tick(){
+  const d = Math.max(0, end - Date.now());
+  const s = Math.floor(d/1000);
+  const h=Math.floor(s/3600), m=Math.floor(s%3600/60), sec=s%60;
+  document.getElementById('t').textContent =`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+document.addEventListener('touchend',e=>{
+  const now=Date.now();
+  if(now-(window.last||0)<300)document.documentElement.requestFullscreen();
+  window.last=now;
+});
+init();
+</script></body></html>
