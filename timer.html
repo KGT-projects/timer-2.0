@@ -1,98 +1,75 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Secure Timer</title>
+  <title>Timer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { margin:0; background:white; color:black; font-family:sans-serif; }
-    #passwordDiv, #timerDiv {
-      display:flex; height:100vh;
-      justify-content:center; align-items:center;
-      flex-direction:column;
-      gap:1rem;
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      background: white; color: black;
+      font-size: 5vw; display: flex;
+      align-items: center; justify-content: center;
+      flex-direction: column; text-align: center;
     }
-    #timer { font-size:12vw; user-select:none; }
-    input { font-size:1.2rem; padding:0.5rem; }
+    #timer { display: none; }
+    input { font-size: 5vw; padding: 1vw; }
   </style>
 </head>
-<body>
-
-  <div id="passwordDiv">
-    <h2>Enter “Token”</h2>
-    <input id="pw" type="password" placeholder="Enter token here" />
-    <button onclick="checkPw()">Submit</button>
-    <div id="notice"></div>
-  </div>
-
-  <div id="timerDiv" style="display:none;">
-    <div id="timer">--:--:--</div>
-    <div id="status"></div>
-  </div>
+<body onclick="goFullscreen()">
+  <input id="token" placeholder="Enter token..." />
+  <div id="timer">Loading...</div>
 
   <script>
-    let AUTH_TOKEN = null;
+    const REPO = 'KGT-projects/timer-2.0';
+    const PATH = 'time.json';
+    const timerDiv = document.getElementById('timer');
+    const tokenInput = document.getElementById('token');
 
-    async function checkPw() {
-      const val = document.getElementById('pw').value.trim();
-      AUTH_TOKEN = val;
-      document.getElementById('passwordDiv').style.display = 'none';
-      document.getElementById('timerDiv').style.display = 'flex';
-      document.getElementById('pw').value = '';
-
-      document.getElementById('status').textContent = 'Checking token...';
-      const ok = await testToken(AUTH_TOKEN);
-      document.getElementById('status').textContent = ok
-        ? '✅ Token is valid'
-        : '⚠️ Token not valid (will continue anyway)';
-
-      startTimer();
+    function goFullscreen() {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
     }
 
-    async function testToken(token) {
-      try {
-        const res = await fetch(
-          'https://api.github.com/repos/KGT-projects/timer-2.0/contents/time.json',
-          { headers: { Authorization: 'token ' + token } }
-        );
-        return res.ok;
-      } catch {
-        return false;
-      }
-    }
+    tokenInput.addEventListener('change', () => {
+      const token = tokenInput.value.trim();
+      if (!token) return alert("Enter a token");
 
-    async function getTime() {
-      const r = await fetch('time.json?_=' + Date.now());
-      const j = await r.json();
-      return j.end_time * 1000;
-    }
-
-    let end = Date.now() + 115200000;
-    async function startTimer() {
-      end = await getTime();
-      tick();
-      setInterval(tick, 1000);
-    }
-
-    function tick() {
-      const d = Math.max(0, end - Date.now());
-      const s = Math.floor(d / 1000);
-      const h = Math.floor(s / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      const sec = s % 60;
-      document.getElementById('timer').textContent =
-        `${h.toString().padStart(2, '0')}:` +
-        `${m.toString().padStart(2, '0')}:` +
-        `${sec.toString().padStart(2, '0')}`;
-    }
-
-    document.addEventListener('touchend', e => {
-      const now = Date.now();
-      if (now - (window.lastTap || 0) < 300) {
-        document.documentElement.requestFullscreen?.();
-      }
-      window.lastTap = now;
+      tokenInput.style.display = 'none';
+      timerDiv.style.display = 'block';
+      startTimer(token);
     });
+
+    async function startTimer(token) {
+      async function getTimeJson() {
+        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
+          headers: { Authorization: `token ${token}` }
+        });
+        if (!res.ok) {
+          alert("Token not working");
+          location.reload();
+          return;
+        }
+        const json = await res.json();
+        const content = JSON.parse(atob(json.content));
+        return content.end;
+      }
+
+      let endTime = await getTimeJson();
+
+      setInterval(() => {
+        const now = Math.floor(Date.now() / 1000);
+        let remaining = endTime - now;
+        if (remaining < 0) remaining = 0;
+
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+
+        timerDiv.textContent =
+          `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }, 1000);
+    }
   </script>
 </body>
 </html>
