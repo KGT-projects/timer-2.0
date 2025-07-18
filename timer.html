@@ -39,7 +39,7 @@
     await fetchEndTime(); // initial load
 
     // Live sync: check for updates every 10 seconds
-    setInterval(fetchEndTime, 1000);
+    setInterval(fetchEndTime, 2000);
 
     setInterval(() => {
       const now = Math.floor(Date.now() / 1000);
