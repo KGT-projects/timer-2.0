@@ -1,104 +1,55 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Control</title>
+  <title>Timer Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      font-family:sans-serif;
-      padding:2rem;
-      background:#f5f5f5;
-      text-align:center;
+      background-color: #f4f4f4;
+      font-family: sans-serif;
+      padding: 2em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1em;
     }
-    
     button {
-      font-size:1.5rem;
-      margin:1rem;
-      padding:1rem 2rem;
+      font-size: 1.5em;
+      padding: 0.8em 1.5em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
     }
-    #status { margin-top:1rem; }
+    .subtract { background-color: #ffcc00; }
+    .reset { background-color: #ff6666; color: white; }
   </style>
 </head>
 <body>
-  <h1>Timer Control</h1>
-  <button onclick="adjust(-4)">–4 uur</button>
-  <button onclick="adjust(32)">Reset naar 32 uur</button>
-  <div id="status"></div>
+  <h1>Timer Control Panel</h1>
+  <button class="subtract" onclick="sendCommand('minus4')">-4 uur</button>
+  <button class="reset" onclick="sendCommand('reset')">Reset Timer</button>
 
   <script>
-    const REPO = 'KGT-projects/timer-2.0';
-    const PATH = 'time.json';
-    const TOKEN = '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';
-    let sha = null;
-
-    function formatHours(h) {
-      return h * 3600;
-    }
-
-    async function getData() {
-      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`);
-      const j = await res.json();
-      sha = j.sha;
-      return JSON.parse(atob(j.content)).timeLeft;
-    }
-
-    async function setTime(sec) {
-      const body = btoa(JSON.stringify({ timeLeft: sec }, null,2));
-      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
-        method: 'PUT',
+    async function sendCommand(command) {
+      const res = await fetch('https://api.github.com/repos/KGT-projects/timer-2.0/issues', {
+        method: 'POST',
         headers: {
-          Authorization: `token ${TOKEN}`,
-          'Content-Type': 'application/json'
+          'Authorization': 'token ghp_...JOUW_TOKEN_HIER...',
+          'Accept': 'application/vnd.github.v3+json'
         },
-        body: JSON.stringify({ message:'Control update', content: body, sha })
+        body: JSON.stringify({
+          title: command,
+          body: "Automatisch verzoek van control.html"
+        })
       });
-      const j = await res.json();
-      sha = j.content.sha;
-      document.getElementById('status').textContent = '✅ Timer is aangepast';
-    }
 
-    async function adjust(hours) {
-      const current = await getData();
-      if (hours===32) {
-        await setTime(formatHours(32));
+      const data = await res.json();
+      if (res.ok) {
+        alert("Verzoek verzonden: " + command);
       } else {
-        await setTime(Math.max(0, current - formatHours(4)));
+        alert("Fout bij verzenden: " + JSON.stringify(data));
       }
     }
-    async function testTokenWithCurlStyle() {
-  const token = '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';
-  const fileUrl = 'https://api.github.com/repos/KGT-projects/timer-2.0/contents/time.json';
-
-  try {
-    const response = await fetch(fileUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `token ${token}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("✅ Token werkt! Inhoud van time.json:", atob(data.content));
-    alert("✅ Token werkt! Zie console voor inhoud van time.json");
-
-  } catch (error) {
-    console.error("❌ Fout bij token-test:", error);
-    alert("❌ Token werkt NIET of geen toegang tot file.");
-  }
-}
-
-// Roep de test aan zodra de pagina laadt
-testTokenWithCurlStyle();
-
-
-// Roep de test aan zodra de pagina laadt
-testTokenWithCurlStyle();
-
   </script>
 </body>
 </html>
