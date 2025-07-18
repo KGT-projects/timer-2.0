@@ -1,31 +1,71 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Timer</title><style>
-body{margin:0;display:flex;height:100vh;align-items:center;justify-content:center;background:#fff;color:#000;font-family:sans-serif;}
-#t{font-size:12vw;user-select:none;touch-action:none;}
-</style></head><body><div id="t">--:--:--</div>
-<script>
-async function getTime() {
-  const r = await fetch('time.json?_=' + Date.now());
-  const j = await r.json();
-  return j.end_time * 1000;
-}
-let end=Date.now()+115200000; // fallback
-async function init(){
-  const ms = await getTime();
-  end = ms;
-  tick();
-  setInterval(tick,1000);
-}
-function tick(){
-  const d = Math.max(0, end - Date.now());
-  const s = Math.floor(d/1000);
-  const h=Math.floor(s/3600), m=Math.floor(s%3600/60), sec=s%60;
-  document.getElementById('t').textContent =`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-}
-document.addEventListener('touchend',e=>{
-  const now=Date.now();
-  if(now-(window.last||0)<300)document.documentElement.requestFullscreen();
-  window.last=now;
-});
-init();
-</script></body></html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Secure Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin:0; background:white; color:black; font-family:sans-serif; }
+    #passwordDiv, #timerDiv { display:flex; height:100vh; justify-content:center; align-items:center; }
+    #passwordDiv { flex-direction:column; gap:1rem; }
+    #timer { font-size:12vw; user-select:none; }
+    input { font-size:1.2rem; padding:0.5rem; }
+  </style>
+</head>
+<body>
+
+  <div id="passwordDiv">
+    <h2>Enter Token Password</h2>
+    <input id="pw" type="password" placeholder="GitHub token" />
+    <button onclick="checkPw()">Submit</button>
+  </div>
+
+  <div id="timerDiv" style="display:none;">
+    <div id="timer">--:--:--</div>
+  </div>
+
+  <script>
+    const CORRECT_TOKEN = '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'; // Use your token
+    let AUTH_TOKEN = null;
+
+    function checkPw(){
+      const val = document.getElementById('pw').value.trim();
+      if (val === CORRECT_TOKEN) {
+        AUTH_TOKEN = val;
+        document.getElementById('passwordDiv').style.display = 'none';
+        document.getElementById('timerDiv').style.display = 'flex';
+        startTimer();
+      } else {
+        alert('Wrong token/password');
+      }
+    }
+
+    async function loadTime() {
+      const res = await fetch('https://api.github.com/repos/KGT-projects/timer-2.0/contents/time.json');
+      const j = await res.json();
+      return j;
+    }
+
+    // Timer logic (same as before)
+    async function startTimer(){
+      const j = await loadTime();
+      const sha = j.sha;
+      const cfg = JSON.parse(atob(j.content));
+      let timeLeft = cfg.end_time / 1000 - Date.now() / 1000;
+      const timerEl = document.getElementById('timer');
+
+      setInterval(async () => {
+        if (timeLeft > 0) {
+          timeLeft--;
+          timerEl.textContent = new Date(timeLeft * 1000).toISOString().substr(11, 8);
+        } else {
+          timerEl.textContent = '00:00:00';
+        }
+        // update JSON if needed using AUTH_TOKEN
+        // ... omitted for brevity
+      }, 1000);
+    }
+  </script>
+
+</body>
+</html>
