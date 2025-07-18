@@ -1,54 +1,21 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Timer Control</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      background-color: #f4f4f4;
-      font-family: sans-serif;
-      padding: 2em;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1em;
-    }
-    button {
-      font-size: 1.5em;
-      padding: 0.8em 1.5em;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .subtract { background-color: #ffcc00; }
-    .reset { background-color: #ff6666; color: white; }
-  </style>
-</head>
-<body>
-  <h1>Timer Control Panel</h1>
-  <button class="subtract" onclick="sendCommand('minus4')">-4 uur</button>
-  <button class="reset" onclick="sendCommand('reset')">Reset Timer</button>
-
+<head><meta charset="UTF-8"><title>Control</title><meta name="viewport" content="width=device-width"></head>
+<body style="font-family:sans-serif; padding:2rem;">
+  <h1>Timer Control</h1>
+  <button onclick="send('minus4')">−4 uur</button>
+  <button onclick="send('reset')">Reset 32 uur</button>
   <script>
-    async function sendCommand(command) {
+    async function send(cmd) {
       const res = await fetch('https://api.github.com/repos/KGT-projects/timer-2.0/issues', {
         method: 'POST',
         headers: {
-          'Authorization': 'token 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',
+          'Authorization': 'token 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',
           'Accept': 'application/vnd.github.v3+json'
         },
-        body: JSON.stringify({
-          title: command,
-          body: "Automatisch verzoek van control.html"
-        })
+        body: JSON.stringify({ title: cmd, body: "via control.html" })
       });
-
-      const data = await res.json();
-      if (res.ok) {
-        alert("Verzoek verzonden: " + command);
-      } else {
-        alert("Fout bij verzenden: " + JSON.stringify(data));
-      }
+      alert(res.ok ? 'Yes!' : 'No: ' + (await res.json()).message);
     }
   </script>
 </body>
