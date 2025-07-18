@@ -66,31 +66,6 @@
         await setTime(Math.max(0, current - formatHours(4)));
       }
     }
-    async function testTokenWithCurlStyle() {
-  const token = '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';
-  const fileUrl = 'https://api.github.com/repos/KGT-projects/timer-2.0/contents/time.json';
-
-  try {
-    const response = await fetch(fileUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `token ${token}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("✅ Token werkt! Inhoud van time.json:", atob(data.content));
-    alert("✅ Token werkt! Zie console voor inhoud van time.json");
-
-  } catch (error) {
-    console.error("❌ Fout bij token-test:", error);
-    alert("❌ Token werkt NIET of geen toegang tot file.");
-  }
-}
 
 // Roep de test aan zodra de pagina laadt
 testTokenWithCurlStyle();
