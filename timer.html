@@ -1,77 +1,56 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Timer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body, html {
-      margin: 0; padding: 0; height: 100%;
-      background: white; color: black;
-      font-size: 5vw; display: flex;
-      align-items: center; justify-content: center;
-      flex-direction: column; text-align: center;
-    }
-    
-    
-    #timer { display: none; }
-    input { font-size: 5vw; padding: 1vw; }
-  </style>
-</head>
-<body onclick="goFullscreen()">
-  <input id="token" placeholder="Enter token..." />
-  <div id="timer">Loading...</div>
+<script>
+  const REPO = 'KGT-projects/timer-2.0';
+  const PATH = 'time.json';
+  const timerDiv = document.getElementById('timer');
+  const tokenInput = document.getElementById('token');
+  let token = '';
+  let endTime = 0;
 
-  <script>
-    const REPO = 'KGT-projects/timer-2.0';
-    const PATH = 'time.json';
-    const timerDiv = document.getElementById('timer');
-    const tokenInput = document.getElementById('token');
+  function goFullscreen() {
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  }
 
-    function goFullscreen() {
-      const el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    }
+  tokenInput.addEventListener('change', () => {
+    token = tokenInput.value.trim();
+    if (!token) return alert("Enter a token");
+    tokenInput.style.display = 'none';
+    timerDiv.style.display = 'block';
+    startTimer();
+  });
 
-    tokenInput.addEventListener('change', () => {
-      const token = tokenInput.value.trim();
-      if (!token) return alert("Enter a token");
-
-      tokenInput.style.display = 'none';
-      timerDiv.style.display = 'block';
-      startTimer(token);
+  async function fetchEndTime() {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
+      headers: { Authorization: `token ${token}` }
     });
-
-    async function startTimer(token) {
-      async function getTimeJson() {
-        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
-          headers: { Authorization: `token ${token}` }
-        });
-        if (!res.ok) {
-          alert("Token not working");
-          location.reload();
-          return;
-        }
-        const json = await res.json();
-        const content = JSON.parse(atob(json.content));
-        return content.end;
-      }
-
-      let endTime = await getTimeJson();
-
-      setInterval(() => {
-        const now = Math.floor(Date.now() / 1000);
-        let remaining = endTime - now;
-        if (remaining < 0) remaining = 0;
-
-        const h = Math.floor(remaining / 3600);
-        const m = Math.floor((remaining % 3600) / 60);
-        const s = remaining % 60;
-
-        timerDiv.textContent =
-          `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-      }, 1000);
+    if (!res.ok) {
+      alert("Token not working");
+      location.reload();
+      return;
     }
-  </script>
-</body>
-</html>
+    const json = await res.json();
+    const content = JSON.parse(atob(json.content));
+    endTime = content.end;
+  }
+
+  async function startTimer() {
+    await fetchEndTime(); // initial load
+
+    // Live sync: check for updates every 10 seconds
+    setInterval(fetchEndTime, 1000);
+
+    setInterval(() => {
+      const now = Math.floor(Date.now() / 1000);
+      let remaining = endTime - now;
+      if (remaining < 0) remaining = 0;
+
+      const h = Math.floor(remaining / 3600);
+      const m = Math.floor((remaining % 3600) / 60);
+      const s = remaining % 60;
+
+      timerDiv.textContent =
+        `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }, 1000);
+  }
+</script>
