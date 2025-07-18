@@ -6,61 +6,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { margin:0; background:#f4f4f4; color:black; font-family:sans-serif; }
-    #passwordDiv, #controlDiv { display:flex; height:100vh; justify-content:center; align-items:center; flex-direction:column; }
-    button { margin-top:1rem; padding:1rem; font-size:1.2rem; }
-    #controlDiv { gap:1rem; }
+    #passwordDiv, #controlDiv {
+      display:flex; height:100vh;
+      justify-content:center; align-items:center;
+      flex-direction:column; gap:1rem;
+    }
+    button { padding:1rem 2rem; font-size:1.2rem; }
   </style>
 </head>
 <body>
 
   <div id="passwordDiv">
-    <h2>Enter Token Password</h2>
-    <input id="pw" type="password" placeholder="GitHub token" />
+    <h2>Enter “Token”</h2>
+    <input id="pw" type="password" placeholder="Enter token here" />
     <button onclick="checkPw()">Submit</button>
+    <div id="notice"></div>
   </div>
 
   <div id="controlDiv" style="display:none;">
     <h1>Timer Control</h1>
     <button onclick="send('minus4')">−4 uur</button>
     <button onclick="send('reset')">Reset timer</button>
+    <div id="status"></div>
   </div>
 
   <script>
-    const CORRECT_TOKEN = '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';
     let AUTH_TOKEN = null;
 
-    function checkPw(){
+    async function checkPw() {
       const val = document.getElementById('pw').value.trim();
-      if (val === CORRECT_TOKEN) {
-        AUTH_TOKEN = val;
-        document.getElementById('passwordDiv').style.display = 'none';
-        document.getElementById('controlDiv').style.display = 'flex';
-      } else {
-        alert('Wrong password/token');
+      AUTH_TOKEN = val;
+      document.getElementById('passwordDiv').style.display = 'none';
+      document.getElementById('controlDiv').style.display = 'flex';
+      document.getElementById('notice').textContent = '';
+
+      const ok = await testToken(AUTH_TOKEN);
+      document.getElementById('status').textContent = ok
+        ? '✅ Token is valid'
+        : '⚠️ Token not valid (commands may fail)';
+    }
+
+    async function testToken(token) {
+      try {
+        const res = await fetch(
+          'https://api.github.com/repos/KGT-projects/timer-2.0/contents/time.json',
+          { headers: { Authorization: 'token ' + token } }
+        );
+        return res.ok;
+      } catch {
+        return false;
       }
     }
 
-    async function send(command) {
+    async function send(cmd) {
       const res = await fetch(
-        `https://api.github.com/repos/KGT-projects/timer-2.0/issues`,
+        'https://api.github.com/repos/KGT-projects/timer-2.0/issues',
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Authorization": `token ${AUTH_TOKEN}`,
-            "Accept": "application/vnd.github.v3+json",
+            Authorization: 'token ' + AUTH_TOKEN,
+            Accept: 'application/vnd.github.v3+json'
           },
-          body: JSON.stringify({ title: command, body: "timer control" }),
+          body: JSON.stringify({ title: cmd, body: 'via control.html' })
         }
       );
-
-      if (res.ok) alert("✅ Command sent: " + command);
-      else {
-        const j = await res.json();
-        alert("❌ Error: " + (j.message || "unknown"));
-        console.error(j);
-      }
+      const msg = res.ok ? '✅ Command sent' : '❌ Error: ' + (await res.json()).message;
+      document.getElementById('status').textContent = msg;
     }
   </script>
-
 </body>
 </html>
