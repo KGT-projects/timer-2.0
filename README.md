@@ -15,4 +15,4 @@ and if you want to edit how much times the button takes away you need too update
 make sure u change the numbers, so if you want 1 hour every time you click the button, make it like this:
 
 line 24:  \<button onclick="subtract()">-1 Hour\</button>
-line 67:  \const newEnd = content.end - (3600);
+line 67:  const newEnd = content.end - (3600);
