@@ -17,3 +17,5 @@ make sure u change the numbers, so if you want 1 hour every time you click the b
 line 24:  \<button onclick="subtract()">-1 Hour\</button>
 
 line 67:  const newEnd = content.end - (3600);
+
+and that is about everything you need to know, it may not be the best, but it works, and that was my goal.
