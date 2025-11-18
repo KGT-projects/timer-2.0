@@ -10,4 +10,9 @@ also i made a reset button, so you could reset the timer if necesary.
 
 if you want to use my code, please go ahead, but make sure u follow the steps i told.
 if you want too edit, how much time in total there is, u need too update the time file.
-and if you want to edit how much times the button takes away you need too update the control file, lines :
+and if you want to edit how much times the button takes away you need too update the control file, lines : 24 and 67.
+
+make sure u change the numbers, so if you want 1 hour every time you click the button, make it like this:
+
+line 24:
+line 67: 
