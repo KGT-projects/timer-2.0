@@ -1,7 +1,7 @@
-This here is a tmer i built a while ago.
+This here is a timer i built a while ago.
 
 i made it for a scouting camp, but its still a cool project!
-i sent alot more time on this then i wanted, because of alot of stuff whould'nt work.
+i spent alot more time on this then i wanted, because alot of stuff whould'nt work.
 
 currently it is working, but only via github.
 you could take my code and post it in a github reposetory, add a branch and make a github key.
